@@ -1,5 +1,8 @@
 import socket  # noqa: F401
 
+def handle_client(connection):
+    connection.sendall(b"+PONG\r\n")
+
 
 def main():
     # You can use print statements as follows for debugging, they'll be visible when running tests.
@@ -8,7 +11,8 @@ def main():
     server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
     while True:
         connection, _ = server_socket.accept() # wait for client
-        connection.sendall(b"+PONG\r\n")
+        handle_client(connection)
+
 
 
 if __name__ == "__main__":
