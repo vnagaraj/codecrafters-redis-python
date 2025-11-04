@@ -1,7 +1,11 @@
 import socket  # noqa: F401
 
-def handle_client(connection):
-    connection.sendall(b"+PONG\r\n")
+def handle_client(conn):
+    while True:
+        data = conn.recv(1024)
+        if not data:
+            break  # client closed connection
+        conn.sendall(b"+PONG\r\n")
 
 
 def main():
@@ -9,11 +13,10 @@ def main():
     print("Logs from your program will appear here!")
 
     server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
-    connection, _ = server_socket.accept() # wait for client
     while True:
-        data = connection.recv(1024)
-        if data:
-            handle_client(connection)
+        conn, _ = server_socket.accept()  # wait for next client
+        handle_client(conn)               # handle all pings for this client
+        conn.close()                      # clean up when done
 
 
 
