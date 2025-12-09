@@ -7,10 +7,20 @@ def main():
 
     server_socket = socket.create_server(("localhost", 6379), reuse_port=True)
     while True:
-        connection, client_address = server_socket.accept() # wait for client
-        #send response back to client
-        connection.sendall(b"+PONG\r\n")
-        connection.close()
+        connection, client_address = server_socket.accept()  # wait for client
+        try:
+            # Keep the connection open and handle multiple commands
+            while True:
+                data = connection.recv(1024)
+                if not data:
+                    # Client closed the connection
+                    break
+                
+                # Check if PING command is in the received data
+                if b"PING" in data.upper():
+                    connection.sendall(b"+PONG\r\n")
+        finally:
+            connection.close()
 
 
 if __name__ == "__main__":
