@@ -1,54 +1,118 @@
-import socket
+import asyncio
 import logging
+from typing import Tuple
 
 # Configuration constants
-HOST = "localhost"
-PORT = 6379
-BUFFER_SIZE = 1024
+HOST: str = "localhost"
+PORT: int = 6379
+BUFFER_SIZE: int = 1024
 
 # Protocol constants
-PING_COMMAND = b"PING"
-PONG_RESPONSE = b"+PONG\r\n"
+PING_COMMAND: bytes = b"PING"
+PONG_RESPONSE: bytes = b"+PONG\r\n"
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger(__name__)
 
 
-def handle_client(connection, client_address):
-    """Handle a single client connection and respond to commands."""
+async def handle_client(
+    reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+) -> None:
+    """
+    Handle a single client connection and respond to PING commands.
+    
+    This coroutine runs in a loop, continuously reading commands from the client
+    and sending responses. It handles the Redis PING command in RESP protocol format.
+    
+    Args:
+        reader: asyncio.StreamReader object for reading data from the client
+        writer: asyncio.StreamWriter object for sending data to the client
+    
+    Returns:
+        None
+    
+    Raises:
+        Logs any exceptions that occur during client handling but doesn't raise them
+    
+    Example:
+        This function is typically called automatically by asyncio.start_server():
+        
+        server = await asyncio.start_server(handle_client, HOST, PORT)
+    """
+    client_address: Tuple[str, int] = writer.get_extra_info('peername')
     logger.info(f"Client connected from {client_address}")
+    
     try:
         while True:
-            data = connection.recv(BUFFER_SIZE)
+            # Read up to BUFFER_SIZE bytes from the client
+            # This call awaits until data arrives or connection closes
+            data: bytes = await reader.read(BUFFER_SIZE)
+            
+            # Empty bytes means the client closed the connection
             if not data:
                 logger.info(f"Client {client_address} disconnected")
                 break
             
-            # Parse and respond to PING command
+            # Check if PING command is in the received data (case-insensitive)
             if PING_COMMAND in data.upper():
-                connection.sendall(PONG_RESPONSE)
+                # Write PONG response to the output buffer
+                writer.write(PONG_RESPONSE)
+                
+                # Flush the buffer and wait for data to be sent to client
+                # This ensures the response is actually transmitted
+                await writer.drain()
                 logger.debug(f"Sent PONG to {client_address}")
+                
     except Exception as e:
         logger.error(f"Error handling client {client_address}: {e}")
     finally:
-        connection.close()
+        # Ensure the connection is properly closed
+        writer.close()
+        await writer.wait_closed()
 
 
-def main():
-    """Start the Redis server and accept client connections."""
+async def main() -> None:
+    """
+    Start the Redis server and run the event loop.
+    
+    This coroutine initializes an asyncio TCP server that listens for incoming
+    client connections on the specified HOST and PORT. For each new client,
+    it creates a concurrent task using the handle_client() coroutine.
+    
+    The server runs indefinitely until interrupted by a KeyboardInterrupt
+    (Ctrl+C), at which point it gracefully shuts down.
+    
+    Returns:
+        None
+    
+    Raises:
+        KeyboardInterrupt: Caught internally and triggers graceful shutdown
+    
+    Note:
+        This function should be run with asyncio.run(main())
+    
+    Example:
+        if __name__ == "__main__":
+            asyncio.run(main())
+    """
     logger.info(f"Starting Redis server on {HOST}:{PORT}")
     
-    server_socket = socket.create_server((HOST, PORT), reuse_port=True)
+    # Create an async TCP server that accepts connections
+    # asyncio.start_server() returns a Server object
+    server: asyncio.Server = await asyncio.start_server(handle_client, HOST, PORT)
+    
     try:
-        while True:
-            connection, client_address = server_socket.accept()
-            handle_client(connection, client_address)
+        # async with ensures proper cleanup when the server exits
+        async with server:
+            # serve_forever() runs the event loop indefinitely
+            # It accepts new connections and handles them concurrently
+            await server.serve_forever()
     except KeyboardInterrupt:
+        # Graceful shutdown when user presses Ctrl+C
         logger.info("Server shutting down...")
-    finally:
-        server_socket.close()
 
 
 if __name__ == "__main__":
-    main()
+    # asyncio.run() creates an event loop, runs main(), and closes the loop
+    asyncio.run(main())
