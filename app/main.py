@@ -61,6 +61,7 @@ async def handle_client(
             commands = data.split('\r\n')
             arg_length = commands[0][1:]  # Skip the '*' character
             command_name = commands[2]  # The actual command is the third element
+            logger.info(f"command_name {command_name}, arg_length {arg_length}")
             if command_name.upper() == PING_COMMAND.decode():
                 # Write PONG response to the output buffer
                 writer.write(PONG_RESPONSE)
@@ -81,7 +82,7 @@ async def handle_client(
                     b"$" + message_length + b"\r\n" +
                     message_bytes + b"\r\n"
                 )
-                
+                logger.info(f"echo_response: {echo_response}")
                 # Write ECHO response to the output buffer
                 writer.write(echo_response)
                 
