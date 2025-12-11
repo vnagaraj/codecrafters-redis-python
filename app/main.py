@@ -12,7 +12,7 @@ PING_COMMAND: bytes = b"PING"
 PONG_RESPONSE: bytes = b"+PONG\r\n"
 
 ECHO_COMMAND: bytes = b"ECHO"
-ECHO_RESPONSE_PREFIX: bytes = b"*2\r\n$4\r\nECHO\r\n"
+ECHO_RESPONSE_PREFIX: bytes = b"$2\r\n$4\r\nECHO\r\n"
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
