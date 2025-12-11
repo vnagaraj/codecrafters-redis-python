@@ -79,7 +79,6 @@ async def handle_client(
                 
                 # Construct the RESP response for ECHO
                 echo_response = (
-                    ECHO_RESPONSE_PREFIX +
                     b"$" + message_length + b"\r\n" +
                     message_bytes + b"\r\n"
                 )
