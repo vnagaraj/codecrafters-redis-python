@@ -11,6 +11,9 @@ BUFFER_SIZE: int = 1024
 PING_COMMAND: bytes = b"PING"
 PONG_RESPONSE: bytes = b"+PONG\r\n"
 
+ECHO_COMMAND: bytes = b"ECHO"
+ECHO_RESPONSE_PREFIX: bytes = b"*2\r\n$4\r\nECHO\r\n"
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
@@ -53,6 +56,8 @@ async def handle_client(
             if not data:
                 logger.info(f"Client {client_address} disconnected")
                 break
+
+            logger.info(f"Received data from {client_address}: {data}")
             
             # Check if PING command is in the received data (case-insensitive)
             if PING_COMMAND in data.upper():
