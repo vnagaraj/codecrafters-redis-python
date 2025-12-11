@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import Tuple
 
-from parser import RESPParser
+from .parser import RESPParser
 
 # Configuration constants
 HOST: str = "localhost"
