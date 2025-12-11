@@ -2,17 +2,15 @@ import asyncio
 import logging
 from typing import Tuple
 
+from parser import RESPParser
+
 # Configuration constants
 HOST: str = "localhost"
 PORT: int = 6379
 BUFFER_SIZE: int = 1024
 
 # Protocol constants
-PING_COMMAND: bytes = b"PING"
 PONG_RESPONSE: bytes = b"+PONG\r\n"
-
-ECHO_COMMAND: bytes = b"ECHO"
-ECHO_RESPONSE_PREFIX: bytes = b"$2\r\n$4\r\nECHO\r\n"
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
@@ -57,13 +55,17 @@ async def handle_client(
                 logger.info(f"Client {client_address} disconnected")
                 break
 
-            logger.info(f"Received data from {client_address}: {data}")
-            commands = data.decode().split('\r\n')
-            logger.info(f"commands {commands}")
-            arg_length = commands[0][1:]  # Skip the '*' character
-            command_name = commands[2]  # The actual command is the third element
-            logger.info(f"command_name {command_name}, arg_length {arg_length}")
-            if command_name.upper() == PING_COMMAND.decode():
+            logger.debug(f"Received data from {client_address}: {data}")
+            
+            # Parse the RESP command using the parser module
+            parsed_command = RESPParser.parse_command(data)
+            
+            if parsed_command is None:
+                logger.warning(f"Failed to parse command from {client_address}")
+                continue
+            
+            # Handle PING command
+            if RESPParser.is_ping(parsed_command):
                 # Write PONG response to the output buffer
                 writer.write(PONG_RESPONSE)
                 
@@ -71,24 +73,38 @@ async def handle_client(
                 # This ensures the response is actually transmitted
                 await writer.drain()
                 logger.debug(f"Sent PONG to {client_address}")
-            elif command_name.upper() == ECHO_COMMAND.decode():
+            
+            # Handle ECHO command
+            elif RESPParser.is_echo(parsed_command):
                 # Extract the message to echo back
-                message = commands[4]  # The actual message is the fifth element
+                args = RESPParser.get_arguments(parsed_command)
+                
+                if not args:
+                    logger.warning(f"ECHO command with no arguments from {client_address}")
+                    continue
+                
+                message = args[0]  # First argument is the message
                 message_bytes = message.encode('utf-8')
                 message_length = str(len(message_bytes)).encode('utf-8')
                 
                 # Construct the RESP response for ECHO
+                # Format: $<length>\r\n<message>\r\n
                 echo_response = (
                     b"$" + message_length + b"\r\n" +
                     message_bytes + b"\r\n"
                 )
-                logger.info(f"echo_response: {echo_response}")
+                logger.debug(f"echo_response: {echo_response}")
+                
                 # Write ECHO response to the output buffer
                 writer.write(echo_response)
                 
                 # Flush the buffer and wait for data to be sent to client
                 await writer.drain()
                 logger.debug(f"Sent ECHO to {client_address}: {message}")
+            
+            else:
+                # Unknown command
+                logger.warning(f"Unknown command from {client_address}: {parsed_command.get('command')}")
                 
     except Exception as e:
         logger.error(f"Error handling client {client_address}: {e}")
