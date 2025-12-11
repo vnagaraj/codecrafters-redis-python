@@ -58,9 +58,10 @@ async def handle_client(
                 break
 
             logger.info(f"Received data from {client_address}: {data}")
-            
-            # Check if PING command is in the received data (case-insensitive)
-            if PING_COMMAND in data.upper():
+            commands = data.split('\r\n')
+            arg_length = commands[0][1:]  # Skip the '*' character
+            command_name = commands[2]  # The actual command is the third element
+            if command_name.upper() == PING_COMMAND.decode():
                 # Write PONG response to the output buffer
                 writer.write(PONG_RESPONSE)
                 
@@ -68,6 +69,25 @@ async def handle_client(
                 # This ensures the response is actually transmitted
                 await writer.drain()
                 logger.debug(f"Sent PONG to {client_address}")
+            elif command_name.upper() == ECHO_COMMAND.decode():
+                # Extract the message to echo back
+                message = commands[4]  # The actual message is the fifth element
+                message_bytes = message.encode('utf-8')
+                message_length = str(len(message_bytes)).encode('utf-8')
+                
+                # Construct the RESP response for ECHO
+                echo_response = (
+                    ECHO_RESPONSE_PREFIX +
+                    b"$" + message_length + b"\r\n" +
+                    message_bytes + b"\r\n"
+                )
+                
+                # Write ECHO response to the output buffer
+                writer.write(echo_response)
+                
+                # Flush the buffer and wait for data to be sent to client
+                await writer.drain()
+                logger.debug(f"Sent ECHO to {client_address}: {message}")
                 
     except Exception as e:
         logger.error(f"Error handling client {client_address}: {e}")
