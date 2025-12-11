@@ -58,7 +58,8 @@ async def handle_client(
                 break
 
             logger.info(f"Received data from {client_address}: {data}")
-            commands = data.split('\r\n')
+            commands = data.decode().split('\r\n')
+            logger.info(f"commands {commands}")
             arg_length = commands[0][1:]  # Skip the '*' character
             command_name = commands[2]  # The actual command is the third element
             logger.info(f"command_name {command_name}, arg_length {arg_length}")
