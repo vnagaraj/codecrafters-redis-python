@@ -136,3 +136,15 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'ECHO'
+
+    @staticmethod
+    def is_set(parsed_command: Optional[dict]) -> bool:
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'SET'
+
+    @staticmethod
+    def is_get(parsed_command: Optional[dict]) -> bool:
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'GET'

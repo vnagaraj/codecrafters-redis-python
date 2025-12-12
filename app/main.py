@@ -16,6 +16,9 @@ PONG_RESPONSE: bytes = b"+PONG\r\n"
 logging.basicConfig(level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
+#hashmap 
+hashmap = {}
+
 
 async def handle_client(
     reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -101,6 +104,48 @@ async def handle_client(
                 # Flush the buffer and wait for data to be sent to client
                 await writer.drain()
                 logger.debug(f"Sent ECHO to {client_address}: {message}")
+            elif RESPParser.is_set(parsed_command):
+                # For now, just acknowledge the SET command without storing anything
+                args = RESPParser.get_arguments(parsed_command)
+
+                key = args[0]
+                value = args[1]
+                hashmap[key] = value
+                # RESP Simple String response: +OK\r\n
+                set_response = b"+OK\r\n"
+                
+                # Write SET response to the output buffer
+                writer.write(set_response)
+                
+                # Flush the buffer and wait for data to be sent to client
+                await writer.drain()
+                logger.debug(f"Sent SET OK to {client_address}")
+            elif RESPParser.is_get(parsed_command): 
+                
+                args = RESPParser.get_arguments(parsed_command)
+
+                key = args[0]
+                value = hashmap.get(key, None)
+                
+                if value is None:
+                    # RESP Null Bulk String: $-1\r\n
+                    get_response = b"$-1\r\n"
+                else:
+                    value_bytes = value.encode('utf-8')
+                    value_length = str(len(value_bytes)).encode('utf-8')
+                    # RESP Bulk String: $<length>\r\n<value>\r\n
+                    get_response = (
+                        b"$" + value_length + b"\r\n" +
+                        value_bytes + b"\r\n"
+                    )
+                
+                # Write GET response to the output buffer
+                writer.write(get_response)
+                
+                # Flush the buffer and wait for data to be sent to client
+                await writer.drain()
+                logger.debug(f"Sent GET response to {client_address} for key: {key}")
+
             
             else:
                 # Unknown command
