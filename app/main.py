@@ -3,6 +3,7 @@ import logging
 from typing import Tuple
 
 from .parser import RESPParser
+from .store import RedisStore
 
 # Configuration constants
 HOST: str = "localhost"
@@ -16,8 +17,8 @@ PONG_RESPONSE: bytes = b"+PONG\r\n"
 logging.basicConfig(level=logging.INFO)
 logger: logging.Logger = logging.getLogger(__name__)
 
-#hashmap 
-hashmap = {}
+# Global Redis store instance
+store: RedisStore = RedisStore()
 
 
 async def handle_client(
@@ -105,27 +106,40 @@ async def handle_client(
                 await writer.drain()
                 logger.debug(f"Sent ECHO to {client_address}: {message}")
             elif RESPParser.is_set(parsed_command):
-                # For now, just acknowledge the SET command without storing anything
+                """Handle SET command - store a key-value pair"""
                 args = RESPParser.get_arguments(parsed_command)
+
+                if len(args) < 2:
+                    logger.warning(f"SET command with insufficient arguments from {client_address}")
+                    writer.write(b"-ERR SET requires key and value\r\n")
+                    await writer.drain()
+                    continue
 
                 key = args[0]
                 value = args[1]
-                hashmap[key] = value
+                
+                # Use RedisStore to set the value
+                store.set(key, value)
+                
                 # RESP Simple String response: +OK\r\n
-                set_response = b"+OK\r\n"
-                
-                # Write SET response to the output buffer
-                writer.write(set_response)
-                
-                # Flush the buffer and wait for data to be sent to client
+                writer.write(b"+OK\r\n")
                 await writer.drain()
-                logger.debug(f"Sent SET OK to {client_address}")
-            elif RESPParser.is_get(parsed_command): 
-                
+                logger.debug(f"SET {key}={value} from {client_address}")
+            
+            elif RESPParser.is_get(parsed_command):
+                """Handle GET command - retrieve a value by key"""
                 args = RESPParser.get_arguments(parsed_command)
 
+                if not args:
+                    logger.warning(f"GET command with no arguments from {client_address}")
+                    writer.write(b"-ERR GET requires a key\r\n")
+                    await writer.drain()
+                    continue
+
                 key = args[0]
-                value = hashmap.get(key, None)
+                
+                # Use RedisStore to get the value
+                value = store.get(key)
                 
                 if value is None:
                     # RESP Null Bulk String: $-1\r\n
@@ -141,10 +155,8 @@ async def handle_client(
                 
                 # Write GET response to the output buffer
                 writer.write(get_response)
-                
-                # Flush the buffer and wait for data to be sent to client
                 await writer.drain()
-                logger.debug(f"Sent GET response to {client_address} for key: {key}")
+                logger.debug(f"GET {key} from {client_address}: {value}")
 
             
             else:

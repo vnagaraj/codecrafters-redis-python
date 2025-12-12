@@ -139,12 +139,62 @@ class RESPParser:
 
     @staticmethod
     def is_set(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is a SET command.
+        
+        The SET command is used to store a value in Redis with an associated key.
+        In RESP protocol, it follows the format:
+        *3\r\n$3\r\nSET\r\n$<key_length>\r\n<key>\r\n$<value_length>\r\n<value>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is SET, False otherwise
+        
+        Example:
+            >>> data = b"*3\r\n$3\r\nSET\r\n$4\r\nkey1\r\n$6\r\nvalue1\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_set(cmd)
+            True
+            >>> cmd['args']
+            ['key1', 'value1']
+        
+        Note:
+            The SET command typically requires 2 arguments (key and value).
+            Use get_arguments() to extract the key-value pair.
+        """
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'SET'
 
     @staticmethod
     def is_get(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is a GET command.
+        
+        The GET command is used to retrieve a value from Redis by its key.
+        In RESP protocol, it follows the format:
+        *2\r\n$3\r\nGET\r\n$<key_length>\r\n<key>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is GET, False otherwise
+        
+        Example:
+            >>> data = b"*2\r\n$3\r\nGET\r\n$4\r\nkey1\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_get(cmd)
+            True
+            >>> cmd['args']
+            ['key1']
+        
+        Note:
+            The GET command typically requires 1 argument (the key to retrieve).
+            Use get_arguments() to extract the key.
+        """
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'GET'
