@@ -187,6 +187,7 @@ async def handle_client(
                         value_bytes + b"\r\n"
                     )
                 
+                logger.info(f"get_response: {get_response}")
                 # Write GET response to the output buffer
                 writer.write(get_response)
                 await writer.drain()
