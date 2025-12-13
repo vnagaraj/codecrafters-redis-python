@@ -201,7 +201,6 @@ async def handle_client(
                     # Key exists with no expiration
                     get_response = format_bulk_string_response(value)
                 
-                logger.info(f"get_response: {get_response}")
                 # Write GET response to the output buffer
                 writer.write(get_response)
                 await writer.drain()
