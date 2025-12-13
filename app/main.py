@@ -22,6 +22,21 @@ logger: logging.Logger = logging.getLogger(__name__)
 store: RedisStore = RedisStore()
 
 
+def format_bulk_string_response(value: str) -> bytes:
+    """
+    Format a string value as a RESP Bulk String response.
+    
+    Args:
+        value: The string value to format
+    
+    Returns:
+        The RESP Bulk String encoded as bytes: $<length>\r\n<value>\r\n
+    """
+    value_bytes = value.encode('utf-8')
+    value_length = str(len(value_bytes)).encode('utf-8')
+    return b"$" + value_length + b"\r\n" + value_bytes + b"\r\n"
+
+
 async def handle_client(
     reader: asyncio.StreamReader, writer: asyncio.StreamWriter
 ) -> None:
@@ -168,6 +183,7 @@ async def handle_client(
                 
                 # Use RedisStore to get the value
                 value = store.get(key)
+
                 
                 if value is None:
                     # RESP Null Bulk String: $-1\r\n
@@ -178,14 +194,12 @@ async def handle_client(
                         # Key has expired
                         store.delete(key)
                         get_response = b"$-1\r\n"
+                    else:
+                        # Key exists and hasn't expired
+                        get_response = format_bulk_string_response(value)
                 else:
-                    value_bytes = value.encode('utf-8')
-                    value_length = str(len(value_bytes)).encode('utf-8')
-                    # RESP Bulk String: $<length>\r\n<value>\r\n
-                    get_response = (
-                        b"$" + value_length + b"\r\n" +
-                        value_bytes + b"\r\n"
-                    )
+                    # Key exists with no expiration
+                    get_response = format_bulk_string_response(value)
                 
                 logger.info(f"get_response: {get_response}")
                 # Write GET response to the output buffer
