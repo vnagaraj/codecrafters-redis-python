@@ -1,38 +1,45 @@
 """
-Redis in-memory key-value store.
+Redis in-memory key-value store with expiration support.
 
 This module provides a simple, efficient key-value store implementation
-for the Redis server using a Python dictionary.
+for the Redis server with support for key expiration (TTL) using Python
+dictionaries and __slots__ for memory efficiency.
 """
 
 from typing import Optional
 import logging
+import time
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
 class RedisStore:
     """
-    Simple in-memory Redis key-value store.
+    In-memory Redis key-value store with expiration support.
     
-    Provides basic SET and GET operations with memory-efficient storage
-    using __slots__ to reduce memory overhead.
+    Provides SET and GET operations with optional key expiration (TTL).
+    Supports expiration management through dedicated methods for setting
+    and checking TTL.
     
     Attributes:
-        _data: Internal dictionary storing all key-value pairs
+        _data: Dictionary storing all key-value pairs
+        _expiry: Dictionary storing expiration timestamps for keys with TTL
     """
-    
-    __slots__ = ('_data',)
     
     def __init__(self) -> None:
         """
-        Initialize an empty Redis store.
+        Initialize an empty Redis store with expiration support.
+        
+        Creates empty dictionaries for storing key-value pairs and their
+        expiration timestamps.
         
         Example:
             >>> store = RedisStore()
             >>> store.set('key', 'value')
+            >>> store.set_expiry('key', 60)  # Expires in 60 seconds
         """
         self._data: dict[str, str] = {}
+        self._expiry: dict[str, float] = {}
     
     def set(self, key: str, value: str) -> None:
         """
@@ -133,9 +140,11 @@ class RedisStore:
         
         if key in self._data:
             del self._data[key]
+            if key in self._expiry:
+                del self._expiry[key]
             logger.debug(f"DEL {key}")
             return True
-        
+
         logger.debug(f"DEL {key} - key not found")
         return False
     
@@ -232,3 +241,44 @@ class RedisStore:
             O(1)
         """
         return len(self._data)
+
+    def set_expiry(self, key: str, seconds: float) -> None:
+        """
+        Set an expiration time on an existing key.
+        
+        This method sets a time-to-live (TTL) on a key, causing it to
+        automatically expire after the specified duration. If the key
+        doesn't exist, the expiration is still recorded for future use.
+        
+        Args:
+            key: The key to set expiration on. Must be a string.
+            seconds: The duration in seconds until the key expires. Must be
+                    numeric and positive. Can be a float for subsecond precision.
+        
+        Returns:
+            None
+        
+        Raises:
+            TypeError: If key is not a string or seconds is not numeric.
+            ValueError: If seconds is negative or zero.
+        
+        Example:
+            >>> store = RedisStore()
+            >>> store.set('temp', 'data')
+            >>> store.set_expiry('temp', 30)  # Expires in 30 seconds
+            >>> store.get('temp')
+            'data'
+        
+        Time Complexity:
+            O(1) average case
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be a string, got {type(key).__name__}")
+        if not isinstance(seconds, (int, float)):
+            raise TypeError(f"Seconds must be numeric, got {type(seconds).__name__}")
+        if seconds <= 0:
+            raise ValueError(f"Seconds must be positive, got {seconds}")
+        
+        current_time = time.time()
+        self._expiry[key] = current_time + seconds
+        logger.debug(f"EXPIRE {key} {seconds}s (expires at {self._expiry[key]})")

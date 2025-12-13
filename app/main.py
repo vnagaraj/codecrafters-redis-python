@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from typing import Tuple
 
 from .parser import RESPParser
@@ -120,6 +121,33 @@ async def handle_client(
                 
                 # Use RedisStore to set the value
                 store.set(key, value)
+
+                #now checking for expiry argument
+                if len(args) > 2:
+                    expiry_arg = args[2]
+                    expiry_seconds = 0
+                    if len(args) > 3:
+                        time_unit = int(args[3])
+                        try:
+                            if expiry_arg.startswith("EX"):
+                                expiry_seconds = time_unit
+                            elif expiry_arg.startswith("PX"):
+                                expiry_seconds = time_unit / 1000
+                            else:   
+                                raise ValueError("Invalid expiry argument")
+                            store.set_expiry(key, expiry_seconds)
+                            logger.debug(f"SET expiry for {key} to {expiry_seconds} seconds from {client_address}")
+                        except (IndexError, ValueError):
+                                logger.warning(f"Invalid expiry argument in SET command from {client_address}")
+                                writer.write(b"-ERR Invalid expiry argument\r\n")
+                                await writer.drain()
+                                continue
+                    else:
+                        logger.warning(f"Expiry time missing in SET command from {client_address}")
+                        writer.write(b"-ERR Expiry time missing\r\n")
+                        await writer.drain()
+                        continue
+        
                 
                 # RESP Simple String response: +OK\r\n
                 writer.write(b"+OK\r\n")
@@ -144,6 +172,12 @@ async def handle_client(
                 if value is None:
                     # RESP Null Bulk String: $-1\r\n
                     get_response = b"$-1\r\n"
+                elif key in store._expiry:
+                    current_time = time.time()
+                    if current_time >= store._expiry[key]:
+                        # Key has expired
+                        store.delete(key)
+                        get_response = b"$-1\r\n"
                 else:
                     value_bytes = value.encode('utf-8')
                     value_length = str(len(value_bytes)).encode('utf-8')
