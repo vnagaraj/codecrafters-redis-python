@@ -231,9 +231,6 @@ async def handle_client(
                 key = args[0]
                 values = args[1:]
 
-
-                logger.info(f"values: {values}")
-
                 # Use RedisStore to append values to the list
                 for value in values:
                     store.rpush(key, value)
@@ -248,7 +245,6 @@ async def handle_client(
                     rpush_response = format_integer_response(len(values))
 
                 # Write RPUSH response to the output buffer
-                logger.debug(f"rpush_response: {rpush_response}")
                 writer.write(rpush_response)
                 await writer.drain()
                 logger.debug(f"RPUSH {key}={values} from {client_address}")
