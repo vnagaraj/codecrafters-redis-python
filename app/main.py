@@ -206,7 +206,27 @@ async def handle_client(
                 await writer.drain()
                 logger.debug(f"GET {key} from {client_address}: {value}")
 
-            
+            elif RESPParser.is_rpush(parsed_command):
+                """Handle RPUSH command - append values to a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args or len(args) < 2:
+                    logger.warning(f"RPUSH command with insufficient arguments from {client_address}")
+                    writer.write(b"-ERR RPUSH requires a key and at least one value\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+                values = args[1:]
+
+                # Use RedisStore to append values to the list
+                store.rpush(key, *values)
+
+                # RESP Integer response: :<value>\r\n
+                writer.write(f":{len(values)}\r\n".encode())
+                await writer.drain()
+                logger.debug(f"RPUSH {key}={values} from {client_address}")
+
             else:
                 # Unknown command
                 logger.warning(f"Unknown command from {client_address}: {parsed_command.get('command')}")

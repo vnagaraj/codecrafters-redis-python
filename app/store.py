@@ -282,3 +282,35 @@ class RedisStore:
         current_time = time.time()
         self._expiry[key] = current_time + seconds
         logger.debug(f"EXPIRE {key} {seconds}s (expires at {self._expiry[key]})")
+
+    def rpush(self, key: str, value: str) -> None:
+        """
+        Append a value to the list stored at key. If the key does not exist,
+        it is created as an empty list before performing the push operation.
+        
+        Args:
+            key: The key of the list. Must be a string.
+            value: The value to append to the list. Must be a string.
+
+        Returns:
+            None
+
+        Example:
+            >>> store = RedisStore()
+            >>> store.rpush('mylist', 'value1')
+            >>> store.rpush('mylist', 'value2')
+            >>> store.get('mylist')
+            ['value1', 'value2']
+
+        Time Complexity:
+            O(1) average case
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be a string, got {type(key).__name__}")
+        if not isinstance(value, str):
+            raise TypeError(f"Value must be a string, got {type(value).__name__}")
+
+        if key not in self._data:
+            self._data[key] = []
+        self._data[key].append(value)
+        logger.debug(f"RPUSH {key} {value}")

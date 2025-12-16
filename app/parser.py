@@ -198,3 +198,34 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'GET'
+
+    @staticmethod
+    def is_rpush(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is an RPUSH command.
+        
+        The RPUSH command is used to append one or more values to the end of a list in Redis.
+        In RESP protocol, it follows the format:
+        *N\r\n$5\r\nRPUSH\r\n$<key_length>\r\n<key>\r\n$<value1_length>\r\n<value1>\r\n...$<valueN_length>\r\n<valueN>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is RPUSH, False otherwise
+        
+        Example:
+            >>> data = b"*4\r\n$5\r\nRPUSH\r\n$4\r\nlist1\r\n$3\r\nval1\r\n$3\r\nval2\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_rpush(cmd)
+            True
+            >>> cmd['args']
+            ['list1', 'val1', 'val2']
+        
+        Note:
+            The RPUSH command requires at least 2 arguments (the key and at least one value).
+            Use get_arguments() to extract the key and values.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'RPUSH'
