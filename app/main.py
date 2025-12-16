@@ -36,6 +36,18 @@ def format_bulk_string_response(value: str) -> bytes:
     value_length = str(len(value_bytes)).encode('utf-8')
     return b"$" + value_length + b"\r\n" + value_bytes + b"\r\n"
 
+def format_integer_response(value: int) -> bytes:
+    """
+    Format an integer value as a RESP Integer response.
+    
+    Args:
+        value: The integer value to format
+
+    Returns:
+        The RESP Integer encoded as bytes: :<value>\r\n
+    """
+    return f":{value}\r\n".encode('utf-8')
+
 
 async def handle_client(
     reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -224,9 +236,15 @@ async def handle_client(
 
                 # Use RedisStore to get the values after push
                 values = store.get(key)
+                if values is None:  
+                    # RESP Null Bulk String: $-1\r\n
+                    rpush_response = b"$-1\r\n"
+                else:
+                    rpush_response = format_integer_response(values)
 
-                # RESP Integer response: :<value>\r\n
-                writer.write(f":{len(values)}\r\n".encode())
+                # Write RPUSH response to the output buffer
+                logger.debug(f"rpush_response: {rpush_response}")
+                writer.write(rpush_response)
                 await writer.drain()
                 logger.debug(f"RPUSH {key}={values} from {client_address}")
 
