@@ -222,6 +222,9 @@ async def handle_client(
                 # Use RedisStore to append values to the list
                 store.rpush(key, *values)
 
+                # Use RedisStore to get the values after push
+                values = store.get(key)
+
                 # RESP Integer response: :<value>\r\n
                 writer.write(f":{len(values)}\r\n".encode())
                 await writer.drain()
