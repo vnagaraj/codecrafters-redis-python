@@ -231,10 +231,12 @@ async def handle_client(
                 key = args[0]
                 values = args[1:]
 
+
+                logger.info(f"values: {values}")
+
                 # Use RedisStore to append values to the list
                 store.rpush(key, *values)
 
-                logger.info(f"values: {values}")
 
                 # Use RedisStore to get the values after push
                 values = store.get(key)
