@@ -292,7 +292,8 @@ class RESPParser:
             return False
         return parsed_command.get('command') == 'LPUSH'
 
-    def is_llen(self, parsed_command: Optional[dict]) -> bool:
+    @staticmethod
+    def is_llen(parsed_command: Optional[dict]) -> bool:
         """
         Check if the parsed command is an LLEN command.
         
