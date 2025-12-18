@@ -333,5 +333,5 @@ class RedisStore:
             start = len(self._data[key]) + start
         if end < 0:
             end = len(self._data[key]) + end
-
+        print(f"lrange {key} {start} {end}")
         return self._data[key][start:end + 1]   
