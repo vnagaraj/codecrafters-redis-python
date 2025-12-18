@@ -278,8 +278,8 @@ async def handle_client(
                 # Use RedisStore to get the range of values
                 values = store.lrange(key, start, end)
                 if values is None:
-                    # RESP Null Bulk String: $-1\r\n
-                    lrange_response = b"$-1\r\n"
+                    # Key not found - return empty array
+                    lrange_response = b"*0\r\n"
                 else:
                     lrange_response = format_array_response(values)
 
