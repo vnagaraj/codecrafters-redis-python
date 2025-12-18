@@ -287,7 +287,7 @@ async def handle_client(
                 writer.write(lrange_response)
                 await writer.drain()
                 logger.debug(f"LRANGE {key}={values} from {client_address}")
-             elif RESPParser.is_lpush(parsed_command):  
+            elif RESPParser.is_lpush(parsed_command):  
                 """Handle LPUSH command - prepend values to a list"""
                 args = RESPParser.get_arguments(parsed_command)
 
