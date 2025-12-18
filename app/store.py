@@ -321,7 +321,7 @@ class RedisStore:
         
         Args:
             key: The key of the list. Must be a string.
-            start: The starting index of the range (inclusive).
+            start: The starting index of the range (inclusive). Negative indices count from the end.
             end: The ending index of the range (inclusive). -1 means the last element.      
 
         Returns:
@@ -329,9 +329,23 @@ class RedisStore:
         """
         if key not in self._data:
             return None
+        
+        lst = self._data[key]
+        length = len(lst)
+        
+        # Convert negative indices to positive
         if start < 0:
-            start = len(self._data[key]) + start
+            start = length + start
         if end < 0:
-            end = len(self._data[key]) + end
-        print(f"lrange {key} {start} {end}")
-        return self._data[key][start:end + 1]   
+            end = length + end
+        
+        # Clamp indices to valid range
+        start = max(0, start)
+        end = min(length - 1, end)
+        
+        # If start > end, return empty list
+        if start > end:
+            return []
+        
+        logger.debug(f"LRANGE {key} {start} {end}")
+        return lst[start:end + 1]   
