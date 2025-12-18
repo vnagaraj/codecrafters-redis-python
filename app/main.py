@@ -48,6 +48,19 @@ def format_integer_response(value: int) -> bytes:
     """
     return f":{value}\r\n".encode('utf-8')
 
+def format_array_response(values: list[str]) -> bytes:  
+    """
+    Format a list of string values as a RESP Array response.
+    
+    Args:
+        values: The list of string values to format
+
+    Returns:
+        The RESP Array encoded as bytes: *<count>\r\n$<length>\r\n<value>\r\n...
+    """
+    array_header = f"*{len(values)}\r\n".encode('utf-8')
+    elements = [format_bulk_string_response(value) for value in values]
+    return array_header + b"".join(elements)
 
 async def handle_client(
     reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -248,6 +261,32 @@ async def handle_client(
                 writer.write(rpush_response)
                 await writer.drain()
                 logger.debug(f"RPUSH {key}={values} from {client_address}")
+            elif RESPParser.is_lrange(parsed_command):
+                """Handle LRANGE command - retrieve a range of elements from a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args or len(args) < 3:
+                    logger.warning(f"LRANGE command with insufficient arguments from {client_address}")
+                    writer.write(b"-ERR LRANGE requires a key, start, and end index\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+                start = int(args[1])
+                end = int(args[2])
+
+                # Use RedisStore to get the range of values
+                values = store.lrange(key, start, end)
+                if values is None:
+                    # RESP Null Bulk String: $-1\r\n
+                    lrange_response = b"$-1\r\n"
+                else:
+                    lrange_response = format_array_response(values)
+
+                # Write LRANGE response to the output buffer
+                writer.write(lrange_response)
+                await writer.drain()
+                logger.debug(f"LRANGE {key}={values} from {client_address}")
 
             else:
                 # Unknown command

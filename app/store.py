@@ -314,3 +314,19 @@ class RedisStore:
             self._data[key] = []
         self._data[key].append(value)
         logger.debug(f"RPUSH {key} {value}")
+
+    def lrange(self, key: str, start: int, end: int) -> list[str] | None:       
+        """
+        Retrieve a range of elements from the list stored at key.
+        
+        Args:
+            key: The key of the list. Must be a string.
+            start: The starting index of the range (inclusive).
+            end: The ending index of the range (inclusive). -1 means the last element.      
+
+        Returns:
+            A list of elements in the specified range, or None if the key does not exist.
+        """
+        if key not in self._data:
+            return None
+        return self._data[key][start:end + 1]   
