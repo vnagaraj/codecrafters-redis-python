@@ -329,4 +329,9 @@ class RedisStore:
         """
         if key not in self._data:
             return None
+        if start < 0:
+            start = len(self._data[key]) + start
+        if end < 0:
+            end = len(self._data[key]) + end
+
         return self._data[key][start:end + 1]   
