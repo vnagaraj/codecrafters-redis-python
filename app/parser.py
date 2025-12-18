@@ -229,3 +229,34 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'RPUSH'
+
+    @staticmethod
+    def is_lrange(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is an LRANGE command.
+        
+        The LRANGE command is used to retrieve a range of elements from a list in Redis.
+        In RESP protocol, it follows the format:
+        *4\r\n$6\r\nLRANGE\r\n$<key_length>\r\n<key>\r\n$<start_length>\r\n<start>\r\n$<stop_length>\r\n<stop>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is LRANGE, False otherwise
+        
+        Example:
+            >>> data = b"*4\r\n$6\r\nLRANGE\r\n$4\r\nlist1\r\n$1\r\n0\r\n$2\r\n-1\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_lrange(cmd)
+            True
+            >>> cmd['args']
+            ['list1', '0', '-1']
+        
+        Note:
+            The LRANGE command requires 3 arguments (the key, start index, and stop index).
+            Use get_arguments() to extract these values.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'LRANGE'
