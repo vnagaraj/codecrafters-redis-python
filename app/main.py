@@ -316,6 +316,30 @@ async def handle_client(
                 writer.write(lpush_response)
                 await writer.drain()
                 logger.debug(f"LPUSH {key}={values} from {client_address}")
+            elif RESPParser.is_llen(parsed_command):
+                """Handle LLEN command - get the length of a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args:
+                    logger.warning(f"LLEN command with no arguments from {client_address}")
+                    writer.write(b"-ERR LLEN requires a key\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+
+                # Use RedisStore to get the length of the list
+                length = store.llen(key)
+                if length is None:
+                    # Key not found - return 0
+                    llen_response = format_integer_response(0)
+                else:
+                    llen_response = format_integer_response(length)
+
+                # Write LLEN response to the output buffer
+                writer.write(llen_response)
+                await writer.drain()
+                logger.debug(f"LLEN {key}={length} from {client_address}")
 
             else:
                 # Unknown command

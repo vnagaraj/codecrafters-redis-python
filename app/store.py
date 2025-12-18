@@ -389,3 +389,30 @@ class RedisStore:
             self._data[key] = deque()
         self._data[key].appendleft(value)
         logger.debug(f"LPUSH {key} {value}")
+
+    def llen(self, key: str) -> int:
+        """
+        Get the length of the list stored at key.
+        
+        Args:
+            key: The key of the list. Must be a string.
+
+        Returns:
+            The length of the list, or 0 if the key does not exist.
+
+        Example:
+            >>> store = RedisStore()
+            >>> store.rpush('mylist', 'value1')
+            >>> store.rpush('mylist', 'value2')
+            >>> store.llen('mylist')
+            2
+
+        Time Complexity:
+            O(1) average case
+        """
+        if key not in self._data:
+            return 0
+        
+        length = len(self._data[key])
+        logger.debug(f"LLEN {key} = {length}")
+        return length   

@@ -291,3 +291,33 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'LPUSH'
+
+    def is_llen(self, parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is an LLEN command.
+        
+        The LLEN command is used to get the length of a list stored in Redis.
+        In RESP protocol, it follows the format:
+        *2\r\n$4\r\nLLEN\r\n$<key_length>\r\n<key>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is LLEN, False otherwise
+        
+        Example:
+            >>> data = b"*2\r\n$4\r\nLLEN\r\n$4\r\nlist1\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_llen(cmd)
+            True
+            >>> cmd['args']
+            ['list1']
+        
+        Note:
+            The LLEN command requires 1 argument (the key of the list).
+            Use get_arguments() to extract the key.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'LLEN'
