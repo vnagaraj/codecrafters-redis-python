@@ -287,6 +287,35 @@ async def handle_client(
                 writer.write(lrange_response)
                 await writer.drain()
                 logger.debug(f"LRANGE {key}={values} from {client_address}")
+             elif RESPParser.is_lpush(parsed_command):  
+                """Handle LPUSH command - prepend values to a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args or len(args) < 2:
+                    logger.warning(f"LPUSH command with insufficient arguments from {client_address}")
+                    writer.write(b"-ERR LPUSH requires a key and at least one value\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+                values = args[1:]
+
+                # Use RedisStore to prepend values to the list
+                for value in values:
+                    store.lpush(key, value)
+
+                # Use RedisStore to get the values after push
+                values = store.get(key)
+                if values is None:  
+                    # RESP Null Bulk String: $-1\r\n
+                    lpush_response = b"$-1\r\n"
+                else:
+                    lpush_response = format_integer_response(len(values))
+
+                # Write LPUSH response to the output buffer
+                writer.write(lpush_response)
+                await writer.drain()
+                logger.debug(f"LPUSH {key}={values} from {client_address}")
 
             else:
                 # Unknown command

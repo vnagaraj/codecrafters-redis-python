@@ -9,6 +9,7 @@ dictionaries and __slots__ for memory efficiency.
 from typing import Optional
 import logging
 import time
+from collections import deque
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -286,7 +287,10 @@ class RedisStore:
     def rpush(self, key: str, value: str) -> None:
         """
         Append a value to the list stored at key. If the key does not exist,
-        it is created as an empty list before performing the push operation.
+        it is created as an empty deque before performing the push operation.
+        
+        Uses deque for O(1) operations on both ends of the list, supporting
+        efficient RPUSH and future LPUSH operations.
         
         Args:
             key: The key of the list. Must be a string.
@@ -299,7 +303,7 @@ class RedisStore:
             >>> store = RedisStore()
             >>> store.rpush('mylist', 'value1')
             >>> store.rpush('mylist', 'value2')
-            >>> store.get('mylist')
+            >>> store.lrange('mylist', 0, -1)
             ['value1', 'value2']
 
         Time Complexity:
@@ -311,7 +315,7 @@ class RedisStore:
             raise TypeError(f"Value must be a string, got {type(value).__name__}")
 
         if key not in self._data:
-            self._data[key] = []
+            self._data[key] = deque()
         self._data[key].append(value)
         logger.debug(f"RPUSH {key} {value}")
 
@@ -330,7 +334,8 @@ class RedisStore:
         if key not in self._data:
             return None
         
-        lst = self._data[key]
+        # Convert deque to list for indexing and slicing
+        lst = list(self._data[key])
         length = len(lst)
         
         # Convert negative indices to positive
@@ -349,3 +354,38 @@ class RedisStore:
         
         logger.debug(f"LRANGE {key} {start} {end}")
         return lst[start:end + 1]   
+
+    def lpush(self, key: str, value: str) -> None:
+        """
+        Prepend a value to the list stored at key. If the key does not exist,
+        it is created as an empty deque before performing the push operation.
+        
+        Uses deque for O(1) operations on both ends of the list, supporting
+        efficient LPUSH and future RPUSH operations.
+        
+        Args:
+            key: The key of the list. Must be a string.
+            value: The value to prepend to the list. Must be a string.
+
+        Returns:
+            None
+
+        Example:
+            >>> store = RedisStore()
+            >>> store.lpush('mylist', 'value1')
+            >>> store.lpush('mylist', 'value2')
+            >>> store.lrange('mylist', 0, -1)
+            ['value2', 'value1']
+
+        Time Complexity:
+            O(1) average case
+        """
+        if not isinstance(key, str):
+            raise TypeError(f"Key must be a string, got {type(key).__name__}")
+        if not isinstance(value, str):
+            raise TypeError(f"Value must be a string, got {type(value).__name__}")
+
+        if key not in self._data:
+            self._data[key] = deque()
+        self._data[key].appendleft(value)
+        logger.debug(f"LPUSH {key} {value}")

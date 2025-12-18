@@ -260,3 +260,34 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'LRANGE'
+
+    @staticmethod
+    def is_lpush(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is an LPUSH command.
+        
+        The LPUSH command is used to prepend one or more values to the beginning of a list in Redis.
+        In RESP protocol, it follows the format:
+        *N\r\n$5\r\nLPUSH\r\n$<key_length>\r\n<key>\r\n$<value1_length>\r\n<value1>\r\n...$<valueN_length>\r\n<valueN>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is LPUSH, False otherwise
+        
+        Example:
+            >>> data = b"*4\r\n$5\r\nLPUSH\r\n$4\r\nlist1\r\n$3\r\nval1\r\n$3\r\nval2\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_lpush(cmd)
+            True
+            >>> cmd['args']
+            ['list1', 'val1', 'val2']
+        
+        Note:
+            The LPUSH command requires at least 2 arguments (the key and at least one value).
+            Use get_arguments() to extract the key and values.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'LPUSH'
