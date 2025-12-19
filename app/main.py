@@ -340,6 +340,30 @@ async def handle_client(
                 writer.write(llen_response)
                 await writer.drain()
                 logger.debug(f"LLEN {key}={length} from {client_address}")
+            elif RESPParser.is_lpop(parsed_command):    
+                """Handle LPOP command - remove and return the first element of a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args:
+                    logger.warning(f"LPOP command with no arguments from {client_address}")
+                    writer.write(b"-ERR LPOP requires a key\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+
+                # Use RedisStore to pop the first element of the list
+                value = store.lpop(key)
+                if value is None:
+                    # List is empty or key not found - return Null Bulk String
+                    lpop_response = b"$-1\r\n"
+                else:
+                    lpop_response = format_bulk_string_response(value)
+
+                # Write LPOP response to the output buffer
+                writer.write(lpop_response)
+                await writer.drain()
+                logger.debug(f"LPOP {key}={value} from {client_address}")
 
             else:
                 # Unknown command

@@ -415,4 +415,22 @@ class RedisStore:
         
         length = len(self._data[key])
         logger.debug(f"LLEN {key} = {length}")
-        return length   
+        return length  
+
+    def lpop(self, key: str) -> Optional[str]:
+        """
+        Remove and return the first element of the list stored at key.
+        
+        Args:
+            key: The key of the list. Must be a string.
+
+        Returns:
+            The value of the first element, or None if the list is empty or the key does not exist.
+        """
+        if key not in self._data:
+            return None
+
+        # Pop the first element from the deque
+        value = self._data[key].popleft()
+        logger.debug(f"LPOP {key} = {value}")
+        return value

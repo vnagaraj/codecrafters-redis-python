@@ -322,3 +322,34 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'LLEN'
+
+    @staticmethod
+    def is_lpop(self, parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is an LPOP command.
+        
+        The LPOP command is used to remove and return the first element of a list in Redis.
+        In RESP protocol, it follows the format:
+        *2\r\n$4\r\nLPOP\r\n$<key_length>\r\n<key>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is LPOP, False otherwise
+        
+        Example:
+            >>> data = b"*2\r\n$4\r\nLPOP\r\n$4\r\nlist1\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_lpop(cmd)
+            True
+            >>> cmd['args']
+            ['list1']
+        
+        Note:
+            The LPOP command requires 1 argument (the key of the list).
+            Use get_arguments() to extract the key.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'LPOP'
