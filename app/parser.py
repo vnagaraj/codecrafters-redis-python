@@ -324,7 +324,7 @@ class RESPParser:
         return parsed_command.get('command') == 'LLEN'
 
     @staticmethod
-    def is_lpop(self, parsed_command: Optional[dict]) -> bool:
+    def is_lpop(parsed_command: Optional[dict]) -> bool:
         """
         Check if the parsed command is an LPOP command.
         
