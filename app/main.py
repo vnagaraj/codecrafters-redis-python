@@ -341,7 +341,7 @@ async def handle_client(
                 await writer.drain()
                 logger.debug(f"LLEN {key}={length} from {client_address}")
             elif RESPParser.is_lpop(parsed_command):    
-                """Handle LPOP command - remove and return the first element of a list"""
+                """Handle LPOP command - remove and return the first element(s) of a list"""
                 args = RESPParser.get_arguments(parsed_command)
 
                 if not args:
@@ -351,19 +351,38 @@ async def handle_client(
                     continue
 
                 key = args[0]
+                count = None
+                
+                # Check if count argument is provided
+                if len(args) > 1:
+                    try:
+                        count = int(args[1])
+                    except ValueError:
+                        logger.warning(f"Invalid count argument in LPOP command from {client_address}")
+                        writer.write(b"-ERR count must be an integer\r\n")
+                        await writer.drain()
+                        continue
 
-                # Use RedisStore to pop the first element of the list
-                value = store.lpop(key)
-                if value is None:
-                    # List is empty or key not found - return Null Bulk String
+                # Use RedisStore to pop element(s) from the list
+                result = store.lpop(key, count)
+                
+                if result is None:
+                    # Key not found - return Null Bulk String
                     lpop_response = b"$-1\r\n"
+                elif isinstance(result, list):
+                    # Multiple elements returned - format as array
+                    if len(result) == 0:
+                        lpop_response = b"*0\r\n"
+                    else:
+                        lpop_response = format_array_response(result)
                 else:
-                    lpop_response = format_bulk_string_response(value)
+                    # Single element returned
+                    lpop_response = format_bulk_string_response(result)
 
                 # Write LPOP response to the output buffer
                 writer.write(lpop_response)
                 await writer.drain()
-                logger.debug(f"LPOP {key}={value} from {client_address}")
+                logger.debug(f"LPOP {key} count={count} from {client_address}")
 
             else:
                 # Unknown command

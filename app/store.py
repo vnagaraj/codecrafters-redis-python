@@ -417,20 +417,40 @@ class RedisStore:
         logger.debug(f"LLEN {key} = {length}")
         return length  
 
-    def lpop(self, key: str) -> Optional[str]:
+    def lpop(self, key: str, count: Optional[int] = None) -> Optional[str | list[str]]:
         """
-        Remove and return the first element of the list stored at key.
+        Remove and return the first element(s) of the list stored at key.
+        
+        If count is not provided, removes and returns only the first element.
+        If count is provided, removes and returns up to count elements as a list.
         
         Args:
             key: The key of the list. Must be a string.
+            count: Optional number of elements to remove. If None, removes only 1 element.
+                   If provided, returns a list of up to count elements.
 
         Returns:
-            The value of the first element, or None if the list is empty or the key does not exist.
+            If count is None: a single string value or None if list is empty or key doesn't exist.
+            If count is provided: a list of strings (may be empty if list is empty or key doesn't exist),
+                                 or None if key doesn't exist.
         """
         if key not in self._data:
             return None
 
-        # Pop the first element from the deque
-        value = self._data[key].popleft()
-        logger.debug(f"LPOP {key} = {value}")
-        return value
+        if count is None:
+            # Remove and return single element
+            if len(self._data[key]) == 0:
+                return None
+            value = self._data[key].popleft()
+            logger.debug(f"LPOP {key} = {value}")
+            return value
+        else:
+            # Remove and return multiple elements
+            count = max(0, count)  # Ensure count is non-negative
+            result = []
+            for _ in range(count):
+                if len(self._data[key]) == 0:
+                    break
+                result.append(self._data[key].popleft())
+            logger.debug(f"LPOP {key} count={count} = {result}")
+            return result
