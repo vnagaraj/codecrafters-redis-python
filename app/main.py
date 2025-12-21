@@ -409,15 +409,18 @@ async def handle_client(
 
                 while True:
                     for key in keys:
-                        value = store.lpop(key)
-                        if value is not None:
-                            popped_value = value
-                            popped_key = key
-                            break
+                        # First check if list has elements (non-destructive)
+                        if store.llen(key) > 0:
+                            # Now pop the element
+                            value = store.lpop(key)
+                            if value is not None:
+                                popped_value = value
+                                popped_key = key
+                                break
                     if popped_value is not None:
                         break
-                    # Check for timeout
-                    if (time.time() - start_time) >= timeout:
+                    # Check for timeout (0 means infinite)
+                    if timeout > 0 and (time.time() - start_time) >= timeout:
                         break
                     await asyncio.sleep(0.1)  # Small delay before retrying
 
