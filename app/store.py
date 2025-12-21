@@ -487,3 +487,37 @@ class RedisStore:
                                  or None if key doesn't exist.
         """
         return self._pop_from_list(key, count, "BLPOP")
+
+    def type_of(self, key: str) -> str:
+        """
+        Get the type of value stored at key.
+        
+        Args:
+            key: The key to check. Must be a string.
+
+        Returns:
+            A string representing the type of the value stored at key.
+            Possible return values: "string", "list", or "none" if key does not exist.
+
+        Example:
+            >>> store = RedisStore()
+            >>> store.set('mykey', 'value')
+            >>> store.type_of('mykey')
+            'string'
+            >>> store.rpush('mylist', 'value1')
+            >>> store.type_of('mylist')
+            'list'
+            >>> store.type_of('missing')
+            'none'
+
+        Time Complexity:
+            O(1) average case
+        """
+        if key not in self._data:
+            return "none"
+        
+        value = self._data[key]
+        if isinstance(value, deque):
+            return "list"
+        else:
+            return "string"

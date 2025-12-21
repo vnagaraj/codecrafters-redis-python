@@ -435,6 +435,28 @@ async def handle_client(
                 writer.write(blpop_response)
                 await writer.drain()
                 logger.debug(f"BLPOP keys={keys} timeout={timeout} from {client_address}")
+            elif RESPParser.is_type(parsed_command):
+                """Handle TYPE command - get the data type of the value stored at key"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args:
+                    logger.warning(f"TYPE command with no arguments from {client_address}")
+                    writer.write(b"-ERR TYPE requires a key\r\n")
+                    await writer.drain()
+                    continue
+
+                key = args[0]
+
+                # Use RedisStore to get the type of the value
+                value_type = store.type_of(key)
+
+                # RESP Simple String response with the type
+                type_response = format_bulk_string_response(value_type)
+
+                # Write TYPE response to the output buffer
+                writer.write(type_response)
+                await writer.drain()
+                logger.debug(f"TYPE {key}={value_type} from {client_address}")
 
             else:
                 # Unknown command
