@@ -367,8 +367,8 @@ async def handle_client(
                 result = store.lpop(key, count)
                 
                 if result is None:
-                    # Key not found - return Null Bulk String
-                    lpop_response = b"$-1\r\n"
+                    # Key not found - return Null Array
+                    lpop_response = b"*-1\r\n"
                 elif isinstance(result, list):
                     # Multiple elements returned - format as array
                     if len(result) == 0:
@@ -422,8 +422,8 @@ async def handle_client(
                     await asyncio.sleep(0.1)  # Small delay before retrying
 
                 if popped_value is None:
-                    # Timeout occurred - return Null Bulk String
-                    blpop_response = b"$-1\r\n"
+                    # Timeout occurred - return Null Array
+                    blpop_response = b"*-1\r\n"
                 else:
                     # Return the key and value as an array
                     blpop_response = format_array_response([popped_key, popped_value])
