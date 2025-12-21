@@ -36,6 +36,18 @@ def format_bulk_string_response(value: str) -> bytes:
     value_length = str(len(value_bytes)).encode('utf-8')
     return b"$" + value_length + b"\r\n" + value_bytes + b"\r\n"
 
+def format_simple_string_response(value: str) -> bytes:
+    """
+    Format a string value as a RESP Simple String response.
+    
+    Args:
+        value: The string value to format
+    
+    Returns:
+        The RESP Simple String encoded as bytes: +<value>\r\n
+    """
+    return b"+" + value.encode('utf-8') + b"\r\n"
+
 def format_integer_response(value: int) -> bytes:
     """
     Format an integer value as a RESP Integer response.
@@ -451,7 +463,7 @@ async def handle_client(
                 value_type = store.type_of(key)
 
                 # RESP Simple String response with the type
-                type_response = format_bulk_string_response(value_type)
+                type_response = format_simple_string_response(value_type)
 
                 # Write TYPE response to the output buffer
                 writer.write(type_response)
