@@ -395,10 +395,10 @@ async def handle_client(
 
                 keys = args[:-1]  # All but last argument are keys
                 try:
-                    timeout = int(args[-1])  # Last argument is timeout
+                    timeout = float(args[-1])  # Last argument is timeout (can be float)
                 except ValueError:
                     logger.warning(f"Invalid timeout argument in BLPOP command from {client_address}")
-                    writer.write(b"-ERR timeout must be an integer\r\n")
+                    writer.write(b"-ERR timeout must be a number\r\n")
                     await writer.drain()
                     continue
 
