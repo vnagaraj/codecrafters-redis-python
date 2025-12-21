@@ -387,7 +387,7 @@ class RESPParser:
         return parsed_command.get('command') == 'BLPOP'
 
     @staticmethod
-    def is_type(parsed_command: Optional[dict], command_type: str) -> bool:
+    def is_type(parsed_command: Optional[dict]) -> bool:
         """
         Generic method to check if the parsed command matches a given command type.
         
@@ -400,4 +400,4 @@ class RESPParser:
         """
         if parsed_command is None:
             return False
-        return parsed_command.get('command') == command_type
+        return parsed_command.get('command') == 'TYPE'
