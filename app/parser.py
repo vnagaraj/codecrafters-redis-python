@@ -353,3 +353,35 @@ class RESPParser:
         if parsed_command is None:
             return False
         return parsed_command.get('command') == 'LPOP'
+
+    @staticmethod
+    def is_blpop(parsed_command: Optional[dict]) -> bool:
+        """
+        Check if the parsed command is a BLPOP command.
+        
+        The BLPOP command is used to remove and return the first element of a list in Redis,
+        blocking until an element is available if the list is empty.
+        In RESP protocol, it follows the format:
+        *N\r\n$5\r\nBLPOP\r\n$<key1_length>\r\n<key1>\r\n...$<keyN_length>\r\n<keyN>\r\n$<timeout_length>\r\n<timeout>\r\n
+        
+        Args:
+            parsed_command: Dictionary returned by parse_command(), or None
+        
+        Returns:
+            True if the command is BLPOP, False otherwise
+        
+        Example:
+            >>> data = b"*3\r\n$5\r\nBLPOP\r\n$4\r\nlist1\r\n$1\r\n0\r\n"
+            >>> cmd = RESPParser.parse_command(data)
+            >>> RESPParser.is_blpop(cmd)
+            True
+            >>> cmd['args']
+            ['list1', '0']
+        
+        Note:
+            The BLPOP command requires at least 2 arguments (the keys and timeout).
+            Use get_arguments() to extract these values.
+        """
+        if parsed_command is None:
+            return False
+        return parsed_command.get('command') == 'BLPOP'

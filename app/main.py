@@ -383,6 +383,55 @@ async def handle_client(
                 writer.write(lpop_response)
                 await writer.drain()
                 logger.debug(f"LPOP {key} count={count} from {client_address}")
+            elif RESPParser.is_blpop(parsed_command):           
+                """Handle BLPOP command - blocking pop from the start of a list"""
+                args = RESPParser.get_arguments(parsed_command)
+
+                if not args or len(args) < 2:
+                    logger.warning(f"BLPOP command with insufficient arguments from {client_address}")
+                    writer.write(b"-ERR BLPOP requires at least one key and a timeout\r\n")
+                    await writer.drain()
+                    continue
+
+                keys = args[:-1]  # All but last argument are keys
+                try:
+                    timeout = int(args[-1])  # Last argument is timeout
+                except ValueError:
+                    logger.warning(f"Invalid timeout argument in BLPOP command from {client_address}")
+                    writer.write(b"-ERR timeout must be an integer\r\n")
+                    await writer.drain()
+                    continue
+
+                # Start time for timeout calculation
+                start_time = time.time()
+                popped_value = None
+                popped_key = None
+
+                while True:
+                    for key in keys:
+                        value = store.lpop(key)
+                        if value is not None:
+                            popped_value = value
+                            popped_key = key
+                            break
+                    if popped_value is not None:
+                        break
+                    # Check for timeout
+                    if (time.time() - start_time) >= timeout:
+                        break
+                    await asyncio.sleep(0.1)  # Small delay before retrying
+
+                if popped_value is None:
+                    # Timeout occurred - return Null Bulk String
+                    blpop_response = b"$-1\r\n"
+                else:
+                    # Return the key and value as an array
+                    blpop_response = format_array_response([popped_key, popped_value])
+
+                # Write BLPOP response to the output buffer
+                writer.write(blpop_response)
+                await writer.drain()
+                logger.debug(f"BLPOP keys={keys} timeout={timeout} from {client_address}")
 
             else:
                 # Unknown command
